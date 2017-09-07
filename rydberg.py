@@ -8,21 +8,59 @@ import re
 import lattice_data
 
 
-def generate(params, data):
-    if len(params) == 3:
-        if (isinstance(params[0], int) and isinstance(params[1], float) and
-                isinstance(params[2], float)):
-            if (0 < params[0] <= 400 and 0 <= params[1] <= 1 and
-                    0 <= params[2] <= 1):
+def create(params, data):
+    if len(params) == 1:
+        if (isinstance(params[0], int)):
+            if (0 < params[0] <= 200):
                 data.create_lattice(params[0])
-                data.generate_changes(params[1], params[2])
             else:
                 raise TypeError("One or more params out of acceptable range.")
         else:
             raise TypeError("One or more params is of wrong type.")
     else:
         raise TypeError("Does not take %i params." % len(params))
-    # cant run xyz method yet
+
+
+def add_seed(params, data):
+    if data.lattice is not None:
+        if len(params) == 2:
+            if (isinstance(params[0], int) and isinstance(params[1], int)):
+                data.add_seed(params[0], params[1])
+            else:
+                raise TypeError("One or more params is of wrong type.")
+        else:
+            raise TypeError("Does not take %i params." % len(params))
+    else:
+        raise ValueError("Lattice not initialized. Use \"create\" command.")
+
+
+def evolve(params, data):
+    if data.lattice is not None:
+        if len(params) == 3:
+            if (isinstance(params[0], float) and
+                    isinstance(params[1], float) and
+                    isinstance(params[2], float)):
+                if (0 <= params[0] <= 1 and 0 <= params[1] <= 1 and
+                        0 <= params[2] <= 1):
+                    data.generate_changes(params[0], params[1], params[2])
+                else:
+                    raise TypeError("One or more params out of acceptable "
+                                    "range.")
+            else:
+                raise TypeError("One or more params is of wrong type.")
+        elif len(params) == 2:
+            if (isinstance(params[0], float) and isinstance(params[1], float)):
+                if (0 < params[0] <= 1 and 0 <= params[1] <= 1):
+                    data.generate_changes(params[0], params[0], params[1])
+                else:
+                    raise TypeError("One or more params out of acceptable "
+                                    "range.")
+            else:
+                raise TypeError("One or more params is of wrong type.")
+        else:
+            raise TypeError("Does not take %i params." % len(params))
+    else:
+        raise ValueError("Lattice not initialized. Use \"create\" command.")
 
 
 def translate_input(inp_history):
@@ -54,21 +92,26 @@ def numerify(s):
         except ValueError:
             return s
 
+# This has all the data!!!!
 data = lattice_data.LatticeData()
 inp_history = []
 command_history = []
-command_dict = {"generate": generate}
+# Maps user string input to the appropriate function to run.
+command_dict = {"create": create,
+                "addseed": add_seed,
+                "add_seed": add_seed,
+                "evolve": evolve}
 exit = False
-temp = 0
-while (not exit) and temp < 5:
-    temp += 1
+while (not exit):
     inp_history.append(raw_input(">>"))
     new_commands = []
+    # If line is unparsable, execute nothing.
     try:
         new_commands = translate_input(inp_history)
     except SyntaxError as e:
         print(e.message)
         print("Did not execute.")
+    # If line is parsed, try to execute each command. Log each successful.
     for command_attempt in new_commands:
         try:
             if command_attempt[0] == "exit":

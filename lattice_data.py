@@ -10,17 +10,39 @@ import numpy as np
 class LatticeData:
     def __init__(self):
         self.lattice = None
+        self.consideration = None
+        self.excited = None
+        # equivalent to checking if further evolvable
+        self.done = False
 
-    def create_lattice(self, size):
+    def create_lattice(self, extent):
+        size = 2*extent + 1
         self.lattice = np.zeros((size, size), dtype=np.int8)
-        self.flip_on(0, 0)
+        self.consideration = set()
+        self.excited = set()
 
-    def generate_changes(self, p, g):
+    def add_seed(self, x, y):
+        try:
+            self.flip_on(x, y)
+            # check if done, update self.done accordingly
+            # following code only executed if not done
+            self.consideration.add((x + 1, y))
+            self.consideration.add((x, y + 1))
+            self.consideration.add((x - 1, y))
+            self.consideration.add((x, y - 1))
+        except IndexError:
+            print("Index/indices for command \"addSeed\" out of bounds. "
+                  "Skipped over.")
+
+    def generate_changes(self, px, py, g):
+        if len(self.excited) == 0:
+            self.add_seed(0, 0)
         print(self.lattice)
 
     def flip_on(self, x, y):
         rc = self.get_rc(x, y)
         self.lattice[rc[0], rc[1]] = 1
+        self.excited.add((x, y))
 
     def get_rc(self, x, y):
         if self.lattice is not None:
@@ -69,7 +91,8 @@ class CoordinateLinkedList:
         self.head = None
         self.tail = None
 
-    def add(self, node):
+    def add(self, x, y):
+        node = CoordinateNode(x, y)
         if self.head is None:
             self.head = node
             self.tail = node
