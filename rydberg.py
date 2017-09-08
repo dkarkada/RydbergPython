@@ -120,7 +120,9 @@ while (not exit):
                 command_dict[command_attempt[0]](command_attempt[1], data)
                 command_history.append(command_attempt)
         except KeyError:
-            print("Command \"%s\" not found. Skipped over."
+            print("Command \"%s\" not found."
                   % command_attempt[0])
         except TypeError as e:
+            print("Command \"%s\": " % command_attempt[0] + e.message)
+        except ValueError as e:
             print("Command \"%s\": " % command_attempt[0] + e.message)
