@@ -53,8 +53,6 @@ class LatticeData:
                     if rnd.random < g:
                         self.flip_off(atom)
                         self.consider_neighbors(atom)
-                        # is this^ necessary if i dont keep a perm next list?
-                        # ie if not p then move back to consideration
                     else:
                         new_excited.add(atom)
                 self.excited = new_excited
@@ -96,10 +94,20 @@ class LatticeData:
     def consider_neighbors(self, atom):
         x = atom[0]
         y = atom[1]
-        self.consideration.add((x + 1, y))
-        self.consideration.add((x, y + 1))
-        self.consideration.add((x - 1, y))
-        self.consideration.add((x, y - 1))
+        if self.on_edge(x, y):
+            print("98AAAAAAAAAAAAAAA")
+        r = self.get_rc(x, y)[0]
+        c = self.get_rc(x, y)[1]
+        if self.lattice[r][c] != 1:
+            self.consideration.add((x, y))
+        if self.lattice[r][c+1] != 1:
+            self.consideration.add((x + 1, y))
+        if self.lattice[r-1][c] != 1:
+            self.consideration.add((x, y + 1))
+        if self.lattice[r][c-1] != 1:
+            self.consideration.add((x - 1, y))
+        if self.lattice[r+1][c] != 1:
+            self.consideration.add((x, y - 1))
 
     def get_rc(self, x, y):
         if self.lattice is not None:
