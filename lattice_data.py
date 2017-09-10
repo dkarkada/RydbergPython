@@ -26,8 +26,8 @@ class LatticeData:
     def add_seed(self, x, y):
         if self.lattice is not None:
             try:
-                self.flip_on(x, y)
-                if self.on_edge(x, y):
+                self.flip_on((x, y))
+                if self.on_edge((x, y)):
                     self.done = True
                 else:
                     self.consider_neighbors((x, y))
@@ -43,29 +43,51 @@ class LatticeData:
             if len(self.excited) == 0:
                 self.add_seed(0, 0)
             step = 0
-            while step < 200 and not self.done:  # 2000 lol
+            while step < 7 and not self.done:  # 2000 lol
                 step += 1
                 nextx = set()
                 nexty = set()
-                # consider REAL good here
+                for atom in self.consideration:
+                    neighbors = self.create_neighbor_matrix(atom)
+                    mat = np.ones((2), dtype=np.int8)
+                    result = np.dot(neighbors, mat)
+                    if np.array_equal(result, [1, 0]):
+                        nexty.add(atom)
+                    if np.array_equal(result, [0, 1]):
+                        nextx.add(atom)
                 new_excited = set()
                 for atom in self.excited:
-                    if rnd.random < g:
+                    if rnd.random() < g:
                         self.flip_off(atom)
                         self.consider_neighbors(atom)
                     else:
                         new_excited.add(atom)
                 self.excited = new_excited
                 for atom in nextx:
-                    print()
-                    # do shit
-            print(self.lattice)
+                    if rnd.random() < px:
+                        self.flip_on(atom)
+                        if self.on_edge(atom):
+                            self.done = True
+                        else:
+                            self.consider_neighbors(atom)
+                for atom in nexty:
+                    if rnd.random() < py:
+                        self.flip_on(atom)
+                        if self.on_edge(atom):
+                            self.done = True
+                        else:
+                            self.consider_neighbors(atom)
+                if len(self.excited) == 0:
+                    self.done = True
+                print(self.stringify(self.lattice))
         else:
             raise ValueError("Lattice not initialized. Use \"create\" "
                              "command.")
 
-    def flip_on(self, x, y):
+    def flip_on(self, atom):
         if self.lattice is not None:
+            x = atom[0]
+            y = atom[1]
             rc = self.get_rc(x, y)
             self.lattice[rc[0], rc[1]] = 1
             self.excited.add((x, y))
@@ -83,31 +105,68 @@ class LatticeData:
             raise ValueError("Lattice not initialized. Use \"create\" "
                              "command.")
 
-    def on_edge(self, x, y):
+    def on_edge(self, atom):
         if self.lattice is not None:
+            x = atom[0]
+            y = atom[1]
             extent = (self.lattice.shape[0] - 1) // 2
             return x == -extent or x == extent or y == -extent or y == extent
         else:
             raise ValueError("Lattice not initialized. Use \"create\" "
                              "command.")
 
+    def valid(self, atom):
+        if self.lattice is not None:
+            x = atom[0]
+            y = atom[1]
+            extent = (self.lattice.shape[0] - 1) // 2
+            return (x >= -extent and x <= extent and
+                    y >= -extent and y <= extent)
+        else:
+            raise ValueError("Lattice not initialized. Use \"create\" "
+                             "command.")
+
     def consider_neighbors(self, atom):
-        x = atom[0]
-        y = atom[1]
-        if self.on_edge(x, y):
-            print("98AAAAAAAAAAAAAAA")
-        r = self.get_rc(x, y)[0]
-        c = self.get_rc(x, y)[1]
-        if self.lattice[r][c] != 1:
-            self.consideration.add((x, y))
-        if self.lattice[r][c+1] != 1:
-            self.consideration.add((x + 1, y))
-        if self.lattice[r-1][c] != 1:
-            self.consideration.add((x, y + 1))
-        if self.lattice[r][c-1] != 1:
-            self.consideration.add((x - 1, y))
-        if self.lattice[r+1][c] != 1:
-            self.consideration.add((x, y - 1))
+        if self.lattice is not None:
+            x = atom[0]
+            y = atom[1]
+            if self.on_edge((x, y)):
+                print("98AAAAAAAAAAAAAAA")
+            r = self.get_rc(x, y)[0]
+            c = self.get_rc(x, y)[1]
+            if self.lattice[r][c] != 1:
+                self.consideration.add((x, y))
+            if self.lattice[r][c+1] != 1:
+                self.consideration.add((x + 1, y))
+            if self.lattice[r-1][c] != 1:
+                self.consideration.add((x, y + 1))
+            if self.lattice[r][c-1] != 1:
+                self.consideration.add((x - 1, y))
+            if self.lattice[r+1][c] != 1:
+                self.consideration.add((x, y - 1))
+        else:
+            raise ValueError("Lattice not initialized. Use \"create\" "
+                             "command.")
+
+    def create_neighbor_matrix(self, atom):
+        if self.lattice is not None:
+            result = np.zeros((2, 2), dtype=np.int8)
+            x = atom[0]
+            y = atom[1]
+            r = self.get_rc(x, y)[0]
+            c = self.get_rc(x, y)[1]
+            if self.valid((x + 1, y)):
+                result[1][0] = self.lattice[r][c+1]
+            if self.valid((x, y + 1)):
+                result[0][0] = self.lattice[r-1][c]
+            if self.valid((x - 1, y)):
+                result[1][1] = self.lattice[r][c-1]
+            if self.valid((x, y - 1)):
+                result[0][1] = self.lattice[r+1][c]
+            return result
+        else:
+            raise ValueError("Lattice not initialized. Use \"create\" "
+                             "command.")
 
     def get_rc(self, x, y):
         if self.lattice is not None:
@@ -124,6 +183,14 @@ class LatticeData:
         else:
             raise ValueError("Lattice not initialized. Use \"create\" "
                              "command.")
+
+    def stringify(self, lattice):
+        result = ""
+        for row in lattice:
+            for elem in row:
+                result += "O " if elem == 1 else " "
+            result += "\n"
+        return result
 
 """
 Implementation of nodes for a LinkedList which represent a coordinate
