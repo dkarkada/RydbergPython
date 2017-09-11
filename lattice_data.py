@@ -16,6 +16,17 @@ class LatticeData:
         # equivalent to checking if further evolvable
         self.done = False
 
+    """
+    * Creates a 2D square lattice with odd dimensions. This guarantees a
+    center location, which is the origin. The x and y axes extend from -extent
+    to +extent. The lattice is initialized to all zeros (all atoms in ground
+    state).
+    * Consideration is a set of all atoms that might be eligible to be flipped
+    on in the next frame. Keeping track of the eligible atoms saves us from
+    having to traverse the whole lattice to look for eligible atoms.
+    * Done is updated to true when an atom on the edge of the lattice is
+    flipped on. Evolution past this point is undefined.
+    """
     def create_lattice(self, extent):
         size = 2*extent + 1
         self.lattice = np.zeros((size, size), dtype=np.int8)
@@ -23,6 +34,11 @@ class LatticeData:
         self.excited = set()
         self.done = False
 
+    """
+    Flip input location on, update self.done if it's on the edge, otherwise
+    add neighbors to consideration. They could be flipped on later if they
+    only have one excited neighbor.
+    """
     def add_seed(self, x, y):
         if self.lattice is not None:
             try:
@@ -38,12 +54,34 @@ class LatticeData:
             raise ValueError("Lattice not initialized. Use \"create\" "
                              "command.")
 
+    """
+    * If no seed has been added yet, put one at the origin. Then evolve for
+    2000 frames, or until the aggregate goes out of bounds, whichever comes
+    first.
+    * nextx and nexty are all the ground state atoms that are eligible to be
+    flipped on (exactly one excited neighbor). They are generated straight from
+    the consideration set.
+    * The x and y variations of the next set are to account for possible
+    anisotropy in excitation probability. I used some dot product voodoo to
+    determine whether the excited neighbor is in the x or y direction.
+    * Flip off the excited atoms with probability g. I used new_excited so that
+    I wouldn't have to worry about O(n) removal operation, which is O(n^2) over
+    the whole set. This is less space efficient, but much more time efficient.
+    * When atoms are flipped off, consider their neighbors. They may have gone
+    from two excited neighbors (bad) to one (nice!), making them eligible for
+    excitation in the next frame.
+    * Flip on eligible atoms with probability p (px and py for nextx and
+    nexty respectively). Update self.done if necessary. Consider neighbors -
+    they may have gone from zero excited neighbors (bad) to one (nice!), making
+    them eligible for excitation in the next frame.
+    * If the aggregate is dead, update self.done to true.
+    """
     def generate_changes(self, px, py, g):
         if self.lattice is not None:
             if len(self.excited) == 0:
                 self.add_seed(0, 0)
             step = 0
-            while step < 7 and not self.done:  # 2000 lol
+            while step < 2000 and not self.done:  # 2000 lol
                 step += 1
                 nextx = set()
                 nexty = set()
@@ -130,8 +168,6 @@ class LatticeData:
         if self.lattice is not None:
             x = atom[0]
             y = atom[1]
-            if self.on_edge((x, y)):
-                print("98AAAAAAAAAAAAAAA")
             r = self.get_rc(x, y)[0]
             c = self.get_rc(x, y)[1]
             if self.lattice[r][c] != 1:
@@ -188,7 +224,7 @@ class LatticeData:
         result = ""
         for row in lattice:
             for elem in row:
-                result += "O " if elem == 1 else " "
+                result += "O " if elem == 1 else "  "
             result += "\n"
         return result
 
