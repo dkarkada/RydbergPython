@@ -103,7 +103,7 @@ command_dict = {"create": create,
                 "evolve": evolve}
 exit = False
 while (not exit):
-    inp_history.append(raw_input(">>"))
+    inp_history.append(input(">>"))
     new_commands = []
     # If line is unparsable, execute nothing.
     try:
